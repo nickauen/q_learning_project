@@ -33,7 +33,6 @@ class QLearning(object):
             self.actions
         ))
 
-
         # Fetch states. There are 64 states. Each row index corresponds to the
         # state number, and the value is a list of 3 items indicating the positions
         # of the pink, green, blue dumbbells respectively.
@@ -43,6 +42,31 @@ class QLearning(object):
         # Note: that not all states are possible to get to.
         self.states = np.loadtxt(path_prefix + "states.txt")
         self.states = list(map(lambda x: list(map(lambda y: int(y), x)), self.states))
+
+        # self.current_state = 0
+        # self.q_matrix = np.zeros((64, 9))
+
+        # self.possible_actions = []
+        # for state in self.action_matrix:
+        #     self.possible_actions.append({})
+        #     for new_state, act in enumerate(state):
+        #         if act != -1:
+        #             self.possible_actions[-1][act] = new_state
+        pass
+
+    def run(self):
+        # for _ in range(3):
+        #     action = np.argmax(self.q_matrix[self.current_state])
+        #     new_state = self.possible_actions[self.current_state][action]
+        #     msg = self.actions[action]
+        #     publish(msg)
+        pass
+
+    def reward(self, data):
+        # update q matrix with reward and state
+        # self.current_state = 0
+        # reset environment ??
+        pass
 
     def save_q_matrix(self):
         # TODO: You'll want to save your q_matrix to a file once it is done to
