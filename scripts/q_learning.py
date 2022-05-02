@@ -73,43 +73,33 @@ class QLearning(object):
         # Give publisher time to set up
         time.sleep(1)
 
-        # while not rospy.is_shutdown():
-        print('New run')
-        self.current_state = 0
-        new_state = 0
-        for _ in range(3):
-            print('  New step')
+        while not rospy.is_shutdown():
+            current_state = 0
+            new_state = 0
+            for _ in range(3):
+                # Find the action with the highest q_value from our current state
+                q_values = []
+                for act in self.possible_actions[current_state].keys():
+                    if act != -1:
+                        q_value = self.q_matrix[current_state][act]
+                        q_values.append([act, q_value])
+                action = max(q_values, key=lambda x:x[1])[0]
 
-            print('    self.current_state', self.current_state)
+                # Take the action to get the next state
+                new_state = self.possible_actions[current_state][action]
 
-            # Find the action with the highest q_value from our current state
-            q_values = []
-            for act in self.possible_actions[self.current_state].keys():
-                if act != -1:
-                    q_value = self.q_matrix[self.current_state][act]
-                    q_values.append([act, q_value])
-            action = max(q_values, key=lambda x:x[1])[0]
-            print('    q_values', q_values)
-            print('    action', action)
+                # Publish that we took the acton
+                msg = RobotMoveObjectToTag()
+                msg.robot_object = self.actions[action]['object']
+                msg.tag_id = self.actions[action]['tag']
 
-            # Take the action to get the next state
-            new_state = self.possible_actions[self.current_state][action]
-            print('    new_state', new_state)
+                # Wait until a reward is given
+                self.got_reward = False
+                self.action_pub.publish(msg)
+                while not self.got_reward:
+                    rospy.Rate(5).sleep()
 
-            # Publish that we took the acton
-            msg = RobotMoveObjectToTag()
-            msg.robot_object = self.actions[action]['object']
-            print('    self.actions[action]["object"]', self.actions[action]['object'])
-            msg.tag_id = self.actions[action]['tag']
-            print('    self.actions[action]["tag"]', self.actions[action]['tag'])
-
-            # Wait until a reward is given
-            self.got_reward = False
-            self.action_pub.publish(msg)
-            while not self.got_reward:
-                rospy.Rate(5).sleep()
-
-            self.current_state = new_state
+                current_state = new_state
 
     def reward(self, data):
         self.reward_value = data.reward
