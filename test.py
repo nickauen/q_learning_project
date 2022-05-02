@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# rosrun q_learning_project test.py blue 2
+
+import sys
 import rospy
 import time
 from geometry_msgs.msg import Twist, Point, PointStamped
@@ -21,8 +24,8 @@ class SendVelocities(object):
         time.sleep(1)
 
         msg = RobotMoveObjectToTag()
-        msg.robot_object = 'pink'
-        msg.tag_id = 3
+        msg.robot_object = sys.argv[1]
+        msg.tag_id = int(sys.argv[2])
 
         r = rospy.Rate(2)
         while not rospy.is_shutdown():
