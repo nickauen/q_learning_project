@@ -44,7 +44,7 @@ class QLearning(object):
         # Fetch states. There are 64 states. Each row index corresponds to the
         # state number, and the value is a list of 3 items indicating the positions
         # of the pink, green, blue dumbbells respectively.
-        # e.g. [[0, 0, 0], [1, 0 , 0], [2, 0, 0], ..., [3, 3, 3]]
+        # e.g. [[0, 0, 0], [1, 0, 0], [2, 0, 0], ..., [3, 3, 3]]
         # e.g. [0, 1, 2] indicates that the green dumbbell is at block 1, and blue at block 2.
         # A value of 0 corresponds to the origin. 1/2/3 corresponds to the block number.
         # Note: that not all states are possible to get to.
@@ -67,12 +67,41 @@ class QLearning(object):
         self.discount_factor = 0.8
 
     def run(self):
-        # for _ in range(3):
-        #     action = np.argmax(self.q_matrix[self.current_state])
-        #     new_state = self.possible_actions[self.current_state][action]
-        #     msg = self.actions[action]
-        #     publish(msg)
-        pass
+        # Give publisher time to set up
+        time.sleep(1)
+
+        # while not rospy.is_shutdown():
+        print('New run')
+        for _ in range(3):
+            print('  New step')
+
+            print('    self.current_state', self.current_state)
+
+            # Find the action with the highest q_value from our current state
+            q_values = []
+            for act in self.possible_actions[self.current_state].keys():
+                if act != -1:
+                    q_value = self.q_matrix[self.current_state][act]
+                    q_values.append([act, q_value])
+            action = max(q_values, key=lambda x:x[1])[0]
+            print('    q_values', q_values)
+            print('    action', action)
+
+            # Take the action to get the next state
+            new_state = self.possible_actions[self.current_state][action]
+            print('    new_state', new_state)
+
+            # Publish that we took the acton
+            msg = RobotMoveObjectToTag()
+            msg.robot_object = self.actions[action]['object']
+            print('    self.actions[action]["object"]', self.actions[action]['object'])
+            msg.tag_id = self.actions[action]['tag']
+            print('    self.actions[action]["tag"]', self.actions[action]['tag'])
+            self.action_pub.publish(msg)
+            # Necessary?
+            rospy.Rate(2).sleep()
+
+            self.current_state = new_state
 
     def reward(self, data):
         # Update q matrix with reward and state
@@ -85,3 +114,4 @@ class QLearning(object):
 
 if __name__ == "__main__":
     node = QLearning()
+    node.run()
