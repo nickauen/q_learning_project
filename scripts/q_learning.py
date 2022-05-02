@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
 
+# roscore
+# roslaunch q_learning_project turtlebot3_intro_robo_manipulation.launch
+# rosrun q_learning_project phantom_robot_movement.py
+# rosrun q_learning_project q_learning.py
+
+import time
 import rospy
 import numpy as np
 import os
+
+from q_learning_project.msg import QLearningReward, RobotMoveObjectToTag
 
 # Path of directory on where this file is located
 path_prefix = os.path.dirname(__file__) + "/action_states/"
