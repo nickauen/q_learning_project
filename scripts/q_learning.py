@@ -77,13 +77,19 @@ class QLearning(object):
             current_state = 0
             new_state = 0
             for _ in range(3):
-                # Find the action with the highest q_value from our current state
+                # Get all possible actions in this state
+                actions = []
                 q_values = []
                 for act in self.possible_actions[current_state].keys():
                     if act != -1:
+                        actions.append(act)
                         q_value = self.q_matrix[current_state][act]
-                        q_values.append([act, q_value])
-                action = max(q_values, key=lambda x:x[1])[0]
+                        # This +10 allows the random selection just below to have
+                        # a chance to 'explore', rather than always 'exploit'
+                        q_values.append(q_value+10)
+
+                # Weighted random selection from the actions
+                action = choices(actions, q_values)[0]
 
                 # Take the action to get the next state
                 new_state = self.possible_actions[current_state][action]
