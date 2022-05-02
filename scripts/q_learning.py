@@ -9,6 +9,7 @@ import time
 import rospy
 import numpy as np
 import os
+from random import choices
 
 from q_learning_project.msg import QLearningReward, RobotMoveObjectToTag
 
@@ -52,8 +53,15 @@ class QLearning(object):
         self.states = list(map(lambda x: list(map(lambda y: int(y), x)), self.states))
 
         #### Project modifications
+        # Publishers and subscribers
         self.action_pub = rospy.Publisher('/q_learning/robot_action', RobotMoveObjectToTag, queue_size=10)
         self.reward_sub = rospy.Subscriber('/q_learning/reward', QLearningReward, self.reward)
+        # Reward stuff
+        self.reward_value = 0
+        self.got_reward = False
+        # Q matrix stuff
+        self.discount_factor = 0.8
+        self.matrix_fname = '~/catkin_ws/src/q_learning_project/q_matrix.csv'
 
         # Use:  q_value = self.q_matrix[state][action]
         self.q_matrix = np.zeros((64, 9))
@@ -61,17 +69,14 @@ class QLearning(object):
         # Use:  new_state = self.possible_actions[state][action]
         self.possible_actions = [{int(act): new_state for new_state, act in enumerate(state)} for state in self.action_matrix]
 
-        self.current_state = 0
-        self.matrix_fname = 'q_matrix.csv'
-        self.learning_rate = 1
-        self.discount_factor = 0.8
-
     def run(self):
         # Give publisher time to set up
         time.sleep(1)
 
         # while not rospy.is_shutdown():
         print('New run')
+        self.current_state = 0
+        new_state = 0
         for _ in range(3):
             print('  New step')
 
@@ -97,20 +102,21 @@ class QLearning(object):
             print('    self.actions[action]["object"]', self.actions[action]['object'])
             msg.tag_id = self.actions[action]['tag']
             print('    self.actions[action]["tag"]', self.actions[action]['tag'])
+
+            # Wait until a reward is given
+            self.got_reward = False
             self.action_pub.publish(msg)
-            # Necessary?
-            rospy.Rate(2).sleep()
+            while not self.got_reward:
+                rospy.Rate(5).sleep()
 
             self.current_state = new_state
 
     def reward(self, data):
-        # Update q matrix with reward and state
-        print('    Reward', data)
-
-        self.current_state = 0
+        self.reward_value = data.reward
+        self.got_reward = True
 
     def save_q_matrix(self):
-        np.savetxt(self.matrix_fname, self.q_matrix, delimiter=",")
+        np.savetxt(self.matrix_fname, self.q_matrix, delimiter=',')
 
 if __name__ == "__main__":
     node = QLearning()
