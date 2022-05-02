@@ -51,16 +51,20 @@ class QLearning(object):
         self.states = np.loadtxt(path_prefix + "states.txt")
         self.states = list(map(lambda x: list(map(lambda y: int(y), x)), self.states))
 
-        # self.current_state = 0
-        # self.q_matrix = np.zeros((64, 9))
+        #### Project modifications
+        self.action_pub = rospy.Publisher('/q_learning/robot_action', RobotMoveObjectToTag, queue_size=10)
+        self.reward_sub = rospy.Subscriber('/q_learning/reward', QLearningReward, self.reward)
 
-        # self.possible_actions = []
-        # for state in self.action_matrix:
-        #     self.possible_actions.append({})
-        #     for new_state, act in enumerate(state):
-        #         if act != -1:
-        #             self.possible_actions[-1][act] = new_state
-        pass
+        # Use:  q_value = self.q_matrix[state][action]
+        self.q_matrix = np.zeros((64, 9))
+
+        # Use:  new_state = self.possible_actions[state][action]
+        self.possible_actions = [{int(act): new_state for new_state, act in enumerate(state)} for state in self.action_matrix]
+
+        self.current_state = 0
+        self.matrix_fname = 'q_matrix.csv'
+        self.learning_rate = 1
+        self.discount_factor = 0.8
 
     def run(self):
         # for _ in range(3):
@@ -71,15 +75,13 @@ class QLearning(object):
         pass
 
     def reward(self, data):
-        # update q matrix with reward and state
-        # self.current_state = 0
-        # reset environment ??
-        pass
+        # Update q matrix with reward and state
+        print('    Reward', data)
+
+        self.current_state = 0
 
     def save_q_matrix(self):
-        # TODO: You'll want to save your q_matrix to a file once it is done to
-        # avoid retraining
-        return
+        np.savetxt(self.matrix_fname, self.q_matrix, delimiter=",")
 
 if __name__ == "__main__":
     node = QLearning()
