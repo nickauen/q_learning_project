@@ -91,7 +91,7 @@ class QLearning(object):
                 # Weighted random selection from the actions
                 action = choices(actions, q_values)[0]
 
-                # Take the action to get the next state
+                # Use the action to get the next state
                 new_state = self.possible_actions[current_state][action]
 
                 # Publish that we took the acton
@@ -104,6 +104,24 @@ class QLearning(object):
                 self.action_pub.publish(msg)
                 while not self.got_reward:
                     rospy.Rate(5).sleep()
+
+                # If we got a positive reward, then the next state is a 'winning' state.
+                # This needs to be remembered so that future actions that lead to this
+                # state will have this equation calculated correctly...
+                #         np.max(self.q_matrix[new_state])
+                if self.reward_value == 100:
+                    self.q_matrix[new_state] = 100
+
+                # Update q_matrix with reward and state
+                old_value = self.q_matrix[current_state][action]
+                new_value = self.reward_value + self.discount_factor * np.max(self.q_matrix[new_state])
+                self.q_matrix[current_state][action] = new_value
+
+                # Save the new q matrix
+                if old_value != new_value:
+                    print('----------------')
+                    print(np.round(self.q_matrix, 0))
+                    self.save_q_matrix()
 
                 current_state = new_state
 
