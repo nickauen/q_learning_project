@@ -9,9 +9,13 @@
     - In order for the robot to learn which colord object belongs in front of which AR tag, the q-learning algorithm iterates through multiple matrices of actions and rewards in order to generate a converged q-matrix of actions that capture the optimal set of actions that the robot should take in order to reach the correct goal. To create this converged q-matrix, the algorithm randomly selects an action from a set of valid actions (actions that can currently be taken). After this selection, the algorithm receives a "reward" (100 = correct action, 0 = incorrect action) which is then incorporated into the q-matrix. At the end of convergence, the greatest values in the q-matrix indicate the optimal set of actions to reach the goal state.
 - Q-learning Algorithm Description
     - Selecting and executing actions for the robot (or phantom robot) to take
+        - In order to ensure that a valid action is selected (value != -1), an action array is created with all valid actions for the current state (those actions which != -1). This occurs in the *for loops* within def run(self). A weighted random choice is then made from this generated array using the *choices* function. This selected action is then used to find the next state of the system (selecting *from action_matrix*). This chosen action is then published using *RobotMoveObjectToTag*.
     - Updating the Q-matrix
+        - The q-learning algorithm listens for the reward publisher which determines the reward amount based on the published action. If the reward is positive (100), the q_matrix is then updated using the q-learning algorithm (reward value + discount factor (0.8) * np.max). If this newly calculated value differs from the current value, the q_matrix csv file is resaved.  
     - Determining when to stop iterating through the Q-learning algorithm
+        - The Q-learning algorithm can stop iterating once the q_matrix converges. Convergence occurs when the values of the matrix cease to change (the optimal path has been identified and optimized for). 
     - Executing the path most likely to lead to receiving a reward after the Q-matrix has converged on the simulated Turtlebot3 robot
+        - This has yet to be done for this section of the project.
 
 ## Implementation Plan
 
