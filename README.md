@@ -2,6 +2,17 @@
 
 **Team Members**: Nick Auen, Rory Butler
 
+## Writeup
+- Objectives
+    - The goal of this project is to use a q-learning algorithm to enable our robot to learn how to organize three objects in front of three AR tags using reinforcement learning. Additionally, another goal of this project is to use the robot's vision to recognize the differently colored objects and utilize the robot's "arm" to interact with these three objects and place them in the proper locations (in front of the right AR tags) after the q-learning phase. 
+- High-Level Description
+    - In order for the robot to learn which colord object belongs in front of which AR tag, the q-learning algorithm iterates through multiple matrices of actions and rewards in order to generate a converged q-matrix of actions that capture the optimal set of actions that the robot should take in order to reach the correct goal. To create this converged q-matrix, the algorithm randomly selects an action from a set of valid actions (actions that can currently be taken). After this selection, the algorithm receives a "reward" (100 = correct action, 0 = incorrect action) which is then incorporated into the q-matrix. At the end of convergence, the greatest values in the q-matrix indicate the optimal set of actions to reach the goal state.
+- Q-learning Algorithm Description
+    - Selecting and executing actions for the robot (or phantom robot) to take
+    - Updating the Q-matrix
+    - Determining when to stop iterating through the Q-learning algorithm
+    - Executing the path most likely to lead to receiving a reward after the Q-matrix has converged on the simulated Turtlebot3 robot
+
 ## Implementation Plan
 
 ### Q-learning algorithm
