@@ -61,7 +61,7 @@ class QLearning(object):
         self.got_reward = False
         # Q matrix stuff
         self.discount_factor = 0.8
-        self.matrix_fname = '~/catkin_ws/src/q_learning_project/q_matrix.csv'
+        self.matrix_fname = os.path.expanduser('~/catkin_ws/src/q_learning_project/q_matrix.csv')
 
         # Use:  q_value = self.q_matrix[state][action]
         self.q_matrix = np.zeros((64, 9))
