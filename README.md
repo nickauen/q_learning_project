@@ -64,7 +64,7 @@ In order for the robot to learn which colored object belongs in front of which A
 - Updating the Q-matrix
    - The q-learning algorithm listens for the reward publisher which determines the reward amount based on the published action. If the reward is positive (100), the q_matrix is then updated using the q-learning algorithm (reward value + discount factor (0.8) * np.max). If this newly calculated value differs from the current value, the q_matrix csv file is resaved.  
 - Determining when to stop iterating through the Q-learning algorithm
-   - The Q-learning algorithm can stop iterating once the q_matrix converges. Convergence occurs when the values of the matrix cease to change (the optimal path has been identified and optimized for). 
+   - The Q-learning algorithm can stop iterating once the q_matrix converges. Convergence occurs when the values of the matrix cease to change (the optimal path has been identified and optimized for). If the convergence_count variable reaches 25 or greater, this means that the q-learning algorithm has gone through 25 iterations without any changes to the CSV file. This likely means that the q-matrix has converged and the optimal path has been identified.
 - Executing the path most likely to lead to receiving a reward after the Q-matrix has converged on the simulated Turtlebot3 robot
    - This has yet to be done for this section of the project.
 ### Robot perception description
