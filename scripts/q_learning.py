@@ -73,6 +73,7 @@ class QLearning(object):
         # Give publisher time to set up
         time.sleep(1)
 
+        convergence_count = 0
         while not rospy.is_shutdown():
             current_state = 0
             new_state = 0
@@ -121,9 +122,17 @@ class QLearning(object):
                 if old_value != new_value:
                     print('----------------')
                     print(np.round(self.q_matrix, 0))
+                    convergence_count = 0
                     self.save_q_matrix()
 
                 current_state = new_state
+
+            # Check for convergence
+            convergence_count += 1
+            if convergence_count > 25:
+                # If it can play 25 games without a single change
+                # to the matrix, it's probably done
+                break
 
     def reward(self, data):
         self.reward_value = data.reward
