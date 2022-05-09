@@ -68,7 +68,19 @@ In order for the robot to learn which colored object belongs in front of which A
 - Executing the path most likely to lead to receiving a reward after the Q-matrix has converged on the simulated Turtlebot3 robot
    - This has yet to be done for this section of the project.
 ### Robot perception description
+- Identifying the locations and identities of each of the colored objects
+    - The colors of each of the tubes (green, pink, and blue) were identified using a narrow range of RGB values. To control for other possible objects with similar colors that the camera might pick up, we exclude those pixels in the bottom half of the image. The robot orients itself with the colored tubes directly in front of it by moving aligning itself to place the colored tube in the center pixel of the image.
+- Identifying the locations and identities of each of the AR tags
+    - The AR tags are identified using the ArUco library implemented through the *aruco* module in OpenCV. The dictionary *DICT_4X4_50* is used for this specific implementation. This library automatically identifies the corners of the tags and the IDs of them. Similar to identifying the locations of the colored tubes, the robot aligns itself so that the target AR tag is placed in the center pixel of the image. 
 ### Robot manipulation and movement
+- Moving to the right spot in order to pick up a colored object
+- Picking up the colored object
+- Moving to the desired destination (AR tag) with the colored object
+- Putting the colored object back down at the desired destination
 ### Challenges
+- *One paragraph*
 ### Future work
+- *One paragraph*
 ### Takeaways
+- *First bulletpoint*
+- *Second bulletpoint*
