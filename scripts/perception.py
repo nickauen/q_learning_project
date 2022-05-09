@@ -25,42 +25,53 @@ class Follower:
         print('dist', self.distance)
 
     def image_callback(self, msg):
-        # COLOR RECOGNITION
+        # converts the incoming ROS message to OpenCV format
+        image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
 
-        # converts the incoming ROS message to OpenCV format and HSV (hue, saturation, value)
-        image = self.bridge.imgmsg_to_cv2(msg,desired_encoding='bgr8')
+        # cx = self.color_recog(image, 'blue')
+        cx = self.artag_recog(image, 1)
+        self.turn_to(image, cx)
+
+        cv2.imshow('img', image)
+        cv2.waitKey(1)
+
+    def color_recog(self, image, color_desired):
+        # Convert to HSV (hue, saturation, value)
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
+        if color_desired == 'blue':
+            # blue = np.uint8([[[72,160,191 ]]])
+            # hsv_green = cv2.cvtColor(green,cv2.COLOR_BGR2HSV)
 
-        blue = numpy.uint8([[[72,160,191 ]]])
-        #hsv_green = cv2.cvtColor(green,cv2.COLOR_BGR2HSV)
+            lower_blue = np.array([40, 100, 100])
+            upper_blue = np.array([100, 255, 255])
 
-        lower_blue = numpy.array([40, 100, 100])
-        upper_blue = numpy.array([100, 255, 255])
+            # this erases all pixels that aren't blue
+            mask = cv2.inRange(hsv, lower_blue, upper_blue)
+        elif color_desired == 'green':
+            # green = np.uint8([[[167,198,61 ]]])
+            # hsv_blue = cv2.cvtColor(blue,cv2.COLOR_BGR2HSV)
 
+            lower_green = np.array([5, 100, 100])
+            upper_green = np.array([40, 255, 255])
 
-        green = numpy.uint8([[[167,198,61 ]]])
-        #hsv_blue = cv2.cvtColor(blue,cv2.COLOR_BGR2HSV)
+            # this erases all pixels that aren't green
+            mask = cv2.inRange(hsv, lower_green, upper_green)
+        else:
+            # pink = np.uint8([[[203,43,129 ]]])
+            # hsv_pink = cv2.cvtColor(pink,cv2.COLOR_BGR2HSV)
 
-        lower_green = numpy.array([5, 100, 100])
-        upper_green = numpy.array([40, 255, 255])
+            lower_pink = np.array([100, 100, 100])
+            upper_pink = np.array([180, 255, 255])
 
-
-        pink = numpy.uint8([[[203,43,129 ]]])
-        #hsv_pink = cv2.cvtColor(pink,cv2.COLOR_BGR2HSV)
-
-        lower_pink = numpy.array([100, 100, 100])
-        upper_pink = numpy.array([180, 255, 255])
-
-
-        # this erases all pixels that aren't blue, green, or pink
-        mask = (cv2.inRange(hsv, lower_blue, upper_blue) + cv2.inRange(hsv, lower_green, upper_green) + cv2.inRange(hsv, lower_pink, upper_pink))
+            # this erases all pixels that aren't pink
+            mask = cv2.inRange(hsv, lower_pink, upper_pink)
 
         # using moments() function, the center of any colored pixels is determined
         M = cv2.moments(mask)
+
         # if there are any yellow pixels found
         if M['m00'] > 0:
-
             # center of the yellow pixels in the image
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
@@ -70,14 +81,9 @@ class Follower:
             # hint: if you don't see a red circle, check your bounds for what is considered 'yellow'
             cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
 
-        # shows the debugging window
-        # hint: you might want to disable this once you're able to get a red circle in the debugging window
+            return cx
 
-        #cv2.imshow("window", image)
-        #cv2.imshow("mask", mask)
-        #cv2.waitKey(3)
-
-        # AR TAG DETECTION
+    def artag_recog(self, image, ar_id_desired):
         # load DICT_4X4_50
         aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
 
@@ -92,26 +98,46 @@ class Follower:
         # location of a tag's corners in the image
         img_center = -1000
 
-        for i in corners:
-            #extract corners
-            corners = i.reshape((4, 2))
-            (tLeftCorner, tRightCorner, bRightCorner, bLeftCorner) = corners
+        if corners is None or ids is None:
+            return
 
-            #convert to integers
+        for corner, ar_id in zip(corners, ids):
+            # extract corners
+            (tLeftCorner, tRightCorner, bRightCorner, bLeftCorner) = corner.reshape((4, 2))
+
+            # convert to integers
             tRightCorner = (int(tRightCorner[0]), int(tRightCorner[1]))
             bRightCorner = (int(bRightCorner[0]), int(bRightCorner[1]))
             bLeftCorner = (int(bLeftCorner[0]), int(bLeftCorner[1]))
             tLeftCorner = (int(tLeftCorner[0]), int(tLeftCorner[1]))
 
-            cv2.rectangle(image,(tLeftCorner),(bRightCorner),(255,0,0),2)
+            cv2.rectangle(image, (tLeftCorner), (bRightCorner), (255,0,0), 2)
 
-        # ids is a 2D array array of shape (n, 1)
-        # each entry is the id of a detected tag in the same order as in corners
+            if ar_id == ar_id_desired:
+                cx = (tLeftCorner[0] + tRightCorner[0]) // 2
+                return cx
 
-        # rejected_points contains points from detected tags that don't have codes matching the dictionary
+    def turn_to(self, image, cx):
+        msg = Twist()
+        msg.angular.z = 0.0
+        msg.linear.x = 0.0
 
-        cv2.imshow('img',image)
-        cv2.waitKey(3)
+        if cx is None:
+            msg.angular.z = -0.15
+            print('Turning')
+            self.twist_pub.publish(msg)
+            return
+
+        img_cx = image.shape[1] // 2
+        bias = cx - img_cx
+
+        msg.angular.z = -bias*0.003
+        print(bias, '   ', -bias*0.003)
+
+        if abs(bias) < 15 and self.distance > 0.5:
+            msg.linear.x = 0.02
+
+        self.twist_pub.publish(msg)
 
     def run(self):
         rospy.spin()
