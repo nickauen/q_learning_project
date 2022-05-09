@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
 
-import rospy, cv2, cv_bridge, numpy
+import rospy
+import cv2
+import cv_bridge
+import numpy as np
+import time
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
+from sensor_msgs.msg import LaserScan
 
 class Follower:
     def __init__(self):
         # set up ROS / OpenCV bridge
         self.bridge = cv_bridge.CvBridge()
 
-        # initalize the debugging window
-        cv2.namedWindow("window", 1)
-
         # subscribe to the robot's RGB camera data stream
-        self.image_sub = rospy.Subscriber('camera/rgb/image_raw',
-        Image, self.image_callback)
+        self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
+        self.laser_sub = rospy.Subscriber('/scan', LaserScan, self.process_scan)
+        self.twist_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        self.distance = 100
 
-        # TODO: set up cmd_vel publisher
-        #self.twist_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
-
-        #self.twist=Twist()
+    def process_scan(self, data):
+        self.distance = data.ranges[0]
+        print('dist', self.distance)
 
     def image_callback(self, msg):
         # COLOR RECOGNITION
