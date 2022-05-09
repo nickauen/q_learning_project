@@ -19,12 +19,13 @@ class Robot(object):
 
         # subscribe to the robot's RGB camera data stream
         # TODO fix leading '/' here?
-        rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
-        rospy.Subscriber('/scan', LaserScan, self.process_scan)
-        rospy.Subscriber('/q_learning/robot_action', RobotMoveObjectToTag, self.prepare_to_take_robot_action)
-        self.twist_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.distance = 100
-        self.distance_threshold = 0.5
+
+        self.color_distance_threshold = 0.25
+        self.color_angle_threshold = 15
+
+        self.artag_distance_threshold = 0.4
+        self.artag_angle_threshold = 40
 
         self.move_group_arm = moveit_commander.MoveGroupCommander('arm')
         self.move_group_gripper = moveit_commander.MoveGroupCommander('gripper')
@@ -46,11 +47,19 @@ class Robot(object):
         # 'done' = finished task
         self.state = 'new task'
 
-    def process_scan(self, data):
-        self.distance = data.ranges[0]
-        print('dist', self.distance)
+        rospy.Subscriber('/camera/rgb/image_raw', Image, self.image_callback)
+        rospy.Subscriber('/scan', LaserScan, self.process_scan)
+        rospy.Subscriber('/q_learning/robot_action', RobotMoveObjectToTag, self.add_action_to_queue)
+        self.twist_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
-    def prepare_to_take_robot_action(self, action):
+    def process_scan(self, data):
+        distances = [*data.ranges[355:], *data.ranges[:5]]
+        distances = list(filter(lambda x:x!=0, distances))
+        if len(distances):
+            self.distance = sum(distances)/len(distances)
+
+    def add_action_to_queue(self, action):
+        print('GOT ACTION', (action.robot_object, action.tag_id))
         self.queue.append((action.robot_object, action.tag_id))
 
     def image_callback(self, msg):
@@ -67,41 +76,37 @@ class Robot(object):
             self.color_cx = None
             self.artag_cx = None
 
-        # cv2.imshow('img', image)
-        # cv2.waitKey(1)
-        pass
+        cv2.imshow('img', image)
+        cv2.waitKey(1)
 
     def color_recog(self, image, color_desired):
         # Convert to HSV (hue, saturation, value)
+        image = image[:image.shape[0]//2,:,:]
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
         if color_desired == 'blue':
-            # blue = np.uint8([[[72,160,191 ]]])
-            # hsv_green = cv2.cvtColor(green,cv2.COLOR_BGR2HSV)
-
-            lower_blue = np.array([40, 100, 100])
-            upper_blue = np.array([100, 255, 255])
+            lower_blue = np.array([110, 80, 50])
+            upper_blue = np.array([170, 130, 90])
 
             # this erases all pixels that aren't blue
-            mask = cv2.inRange(hsv, lower_blue, upper_blue)
+            mask = cv2.inRange(image, lower_blue, upper_blue)
         elif color_desired == 'green':
-            # green = np.uint8([[[167,198,61 ]]])
-            # hsv_blue = cv2.cvtColor(blue,cv2.COLOR_BGR2HSV)
-
-            lower_green = np.array([5, 100, 100])
-            upper_green = np.array([40, 255, 255])
+            lower_green = np.array([30, 80, 70])
+            upper_green = np.array([90, 140, 120])
 
             # this erases all pixels that aren't green
-            mask = cv2.inRange(hsv, lower_green, upper_green)
+            mask = cv2.inRange(image, lower_green, upper_green)
         else:
-            # pink = np.uint8([[[203,43,129 ]]])
-            # hsv_pink = cv2.cvtColor(pink,cv2.COLOR_BGR2HSV)
-
-            lower_pink = np.array([100, 100, 100])
-            upper_pink = np.array([180, 255, 255])
+            lower_pink = np.array([120, 60, 140])
+            upper_pink = np.array([160, 100, 180])
 
             # this erases all pixels that aren't pink
-            mask = cv2.inRange(hsv, lower_pink, upper_pink)
+            mask = cv2.inRange(image, lower_pink, upper_pink)
+
+        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 7)), iterations=1)
+
+        cv2.imshow('mask', mask)
+        cv2.waitKey(1)
 
         # using moments() function, the center of any colored pixels is determined
         M = cv2.moments(mask)
@@ -112,10 +117,8 @@ class Robot(object):
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
 
-            # a red circle is visualized in the debugging window to indicate
-            # the center point of the yellow pixels
-            # hint: if you don't see a red circle, check your bounds for what is considered 'yellow'
-            cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
+            # Debug
+            # cv2.circle(image, (cx, cy), 20, (0,0,255), -1)
 
             return cx
 
@@ -147,46 +150,67 @@ class Robot(object):
             bLeftCorner = (int(bLeftCorner[0]), int(bLeftCorner[1]))
             tLeftCorner = (int(tLeftCorner[0]), int(tLeftCorner[1]))
 
-            cv2.rectangle(image, (tLeftCorner), (bRightCorner), (255,0,0), 2)
+            # Debug
+            # cv2.rectangle(image, (tLeftCorner), (bRightCorner), (255,0,0), 2)
 
             if tag_id == tag_id_desired:
                 cx = (tLeftCorner[0] + tRightCorner[0]) // 2
                 return cx
 
-    def go_to(self, cx):
+    def go_to(self, cx, target_type):
         msg = Twist()
         msg.angular.z = 0.0
         msg.linear.x = 0.0
 
+        distance_thresh = self.color_distance_threshold if target_type == 'color' else self.artag_distance_threshold
+        angle_thresh = self.color_angle_threshold if target_type == 'color' else self.artag_angle_threshold
+        speed = 0.04 if target_type == 'color' else 0.1
+
+        good = False
+
         if cx is None or self.img_cx is None:
-            msg.angular.z = -0.15
+            msg.angular.z = -0.25
             print('Turning')
             self.twist_pub.publish(msg)
-            return
+            return good
 
         bias = cx - self.img_cx
 
         msg.angular.z = -bias*0.003
-        print(bias, '   ', -bias*0.003)
+        print('  left/right offset', bias)
+        print('  turning speed    ', -bias*0.003)
+        print('  target distance  ', self.distance)
 
-        if abs(bias) < 15 and self.distance > self.distance_threshold:
-            msg.linear.x = 0.02
+        if self.distance != 0 and abs(bias) < angle_thresh:
+            if self.distance > distance_thresh:
+                msg.linear.x = speed
+            if self.distance > 4*distance_thresh:
+                msg.linear.x = 2*speed
+
+        if self.distance != 0 and self.distance <= distance_thresh:
+            good = True
 
         self.twist_pub.publish(msg)
 
+        return good
+
     def execute_grab(self):
         print('Prepare to grip')
-        arm_joint_goal = [0.0, 0.3, -0.3, 0.0]
+        arm_joint_goal = [0.0, 0.3, -0.2, -0.3]
         self.move_group_arm.go(arm_joint_goal, wait=True)
+        time.sleep(4)
         print('Grip object')
-        gripper_joint_goal = [-0.01, -0.01]
+        gripper_joint_goal = [-0.007, -0.007]
         self.move_group_gripper.go(gripper_joint_goal, wait=True)
+        time.sleep(2)
         print('Lift object')
         arm_joint_goal = [0.0, -1.0, -0.3, 0.0]
         self.move_group_arm.go(arm_joint_goal, wait=True)
+        time.sleep(4)
 
         self.move_group_arm.stop()
         self.move_group_gripper.stop()
+        time.sleep(1)
 
         self.state = 'has object'
 
@@ -194,15 +218,19 @@ class Robot(object):
         print('Set object')
         arm_joint_goal = [0.0, 0.3, -0.3, 0.0]
         self.move_group_arm.go(arm_joint_goal, wait=True)
+        time.sleep(4)
         print('Release object')
         gripper_joint_goal = [0.017, 0.017]
         self.move_group_gripper.go(gripper_joint_goal, wait=True)
+        time.sleep(2)
         print('Move away')
         arm_joint_goal = [0.0, -1.0, 1.0, 0.0]
         self.move_group_arm.go(arm_joint_goal, wait=True)
+        time.sleep(4)
 
         self.move_group_arm.stop()
         self.move_group_gripper.stop()
+        time.sleep(1)
 
         self.state = 'done'
 
@@ -217,6 +245,11 @@ class Robot(object):
         self.move_group_gripper.go(gripper_joint_goal, wait=True)
         self.move_group_gripper.stop()
 
+        msg = Twist()
+        msg.angular.z = 0.0
+        msg.linear.x = 0.0
+        self.twist_pub.publish(msg)
+
         rate = rospy.Rate(1)
         while (not rospy.is_shutdown()):
             if len(self.queue) and self.current_task is None:
@@ -224,19 +257,28 @@ class Robot(object):
                 self.queue = self.queue[1:]
 
             if self.current_task is not None:
+                print('STATE ----- ', self.state)
                 if self.state == 'new task':
-                    dist = self.go_to(self.color_cx)
-                    if dist < self.distance_threshold:
+                    good = self.go_to(self.color_cx, 'color')
+                    if good:
                         self.state = 'at object'
+                        msg = Twist()
+                        msg.angular.z = 0.0
+                        msg.linear.x = 0.0
+                        self.twist_pub.publish(msg)
                 elif self.state == 'at object':
                     self.state = 'at object wait'
                     self.execute_grab()
                 elif self.state == 'at object wait':
                     pass
                 elif self.state == 'has object':
-                    dist = self.go_to(self.artag_cx)
-                    if dist < self.distance_threshold:
-                        self.state = 'at object'
+                    good = self.go_to(self.artag_cx, 'tag')
+                    if good:
+                        self.state = 'at tag'
+                        msg = Twist()
+                        msg.angular.z = 0.0
+                        msg.linear.x = 0.0
+                        self.twist_pub.publish(msg)
                 elif self.state == 'at tag':
                     self.state = 'at tag wait'
                     self.execute_drop()
