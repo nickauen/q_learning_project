@@ -2,6 +2,42 @@
 
 **Team Members**: Nick Auen, Rory Butler
 
+## Writeup
+### Objectives description
+The goal of this project is to use a q-learning algorithm to enable our robot to learn how to organize three objects in front of three AR tags using reinforcement learning. Additionally, this project aims to use the robot's vision to recognize the differently colored objects and utilize the robot's "arm" to interact with these three objects and place them in the proper locations (in front of the right AR tags) after the q-learning phase. 
+### High-level description
+In order for the robot to learn which colored object belongs in front of which AR tag, the q-learning algorithm iterates through multiple matrices of actions and rewards in order to generate a converged q-matrix of actions that capture the optimal set of actions that the robot should take in order to reach the correct goal. To create this converged q-matrix, the algorithm randomly selects an action from a set of valid actions (actions that can currently be taken). After this selection, the algorithm receives a "reward" (100 = correct action, 0 = incorrect action) which is then incorporated into the q-matrix. At the end of convergence, the greatest values in the q-matrix indicate the optimal set of actions to reach the goal state.
+### Q-learning algorithm description
+- Selecting and executing actions for the robot (or phantom robot) to take
+   - In order to ensure that a valid action is selected (value != -1), an action array is created with all valid actions for the current state (those actions which != -1). This occurs in the *for loops* within def run(self). A weighted random choice is then made from this generated array using the *choices* function. This selected action is then used to find the next state of the system (selecting *from action_matrix*). This chosen action is then published using *RobotMoveObjectToTag*.
+- Updating the Q-matrix
+   - The q-learning algorithm listens for the reward publisher which determines the reward amount based on the published action. If the reward is positive (100), the q_matrix is then updated using the q-learning algorithm (reward value + discount factor (0.8) * np.max). If this newly calculated value differs from the current value, the q_matrix csv file is resaved.  
+- Determining when to stop iterating through the Q-learning algorithm
+   - The Q-learning algorithm can stop iterating once the q_matrix converges. Convergence occurs when the values of the matrix cease to change (the optimal path has been identified and optimized for). If the convergence_count variable reaches 25 or greater, this means that the q-learning algorithm has gone through 25 iterations without any changes to the CSV file. This likely means that the q-matrix has converged and the optimal path has been identified.
+- Executing the path most likely to lead to receiving a reward after the Q-matrix has converged on the simulated Turtlebot3 robot
+   - This has yet to be done for this section of the project.
+### Robot perception description
+- Identifying the locations and identities of each of the colored objects
+    - The colors of each of the tubes (green, pink, and blue) were identified using a narrow range of RGB values. To control for other possible objects with similar colors that the camera might pick up, we exclude those pixels in the bottom half of the image. The robot orients itself with the colored tubes directly in front of it by moving aligning itself to place the colored tube in the center pixel of the image.
+    - This code is found within the color_recog() function and is adapted from Lab B (line follower). Based on the desired color (*if* statements), lower and upper RGB bounds are defined and a mask erases all pixels that do not fall within those ranges. The cv2.moments() function finds the center of the correctly colored pixels. *cx* then identifies the x-axis center of the pixels in the image. 
+    - Within the *go_to()* function, the cx value previously calculated is used to move the robot towards colored tube. If no cx has been calculated, the robot spins until it is able to identify the colored tube. The difference between the center of the tube and the image is calulcated and used to proportionally control the movement of the robot towards tube.
+- Identifying the locations and identities of each of the AR tags
+    - The AR tags are identified using the ArUco library implemented through the *aruco* module in OpenCV. The dictionary *DICT_4X4_50* is used for this specific implementation. This library automatically identifies the corners of the tags and the IDs of them. Similar to identifying the locations of the colored tubes, the robot aligns itself so that the target AR tag is placed in the center pixel of the image.
+    - This code is found within the artag_recog() function and is adapted from the provided code for this project. The image is turned to grayscale (*cv2.cvtColor()*) and the corners, ids, and rejected points are found using the *cv2.aruco.detectMarkers()* function. The *if* statement finds the desired tag_id and returns the location of the center pixel of the AR tag to cx. 
+    - Within the *go_to()* function, the cx value previously calculated is used to move the robot towards AR tag. If no cx has been calculated, the robot spins until it is able to identify the proper AR tag. The difference between the center of the tag and the image is calulcated and used to proportionally control the movement of the robot towards tag.
+### Robot manipulation and movement
+- Moving to the right spot in order to pick up a colored object
+- Picking up the colored object
+- Moving to the desired destination (AR tag) with the colored object
+- Putting the colored object back down at the desired destination
+### Challenges
+- *One paragraph*
+### Future work
+- *One paragraph*
+### Takeaways
+- *First bulletpoint*
+- *Second bulletpoint*
+
 ## Implementation Plan
 
 ### Q-learning algorithm
@@ -52,35 +88,3 @@
 
 - May 9
     - Run the physical robot through the process and capture recordings
-
-## Writeup
-### Objectives description
-The goal of this project is to use a q-learning algorithm to enable our robot to learn how to organize three objects in front of three AR tags using reinforcement learning. Additionally, this project aims to use the robot's vision to recognize the differently colored objects and utilize the robot's "arm" to interact with these three objects and place them in the proper locations (in front of the right AR tags) after the q-learning phase. 
-### High-level description
-In order for the robot to learn which colored object belongs in front of which AR tag, the q-learning algorithm iterates through multiple matrices of actions and rewards in order to generate a converged q-matrix of actions that capture the optimal set of actions that the robot should take in order to reach the correct goal. To create this converged q-matrix, the algorithm randomly selects an action from a set of valid actions (actions that can currently be taken). After this selection, the algorithm receives a "reward" (100 = correct action, 0 = incorrect action) which is then incorporated into the q-matrix. At the end of convergence, the greatest values in the q-matrix indicate the optimal set of actions to reach the goal state.
-### Q-learning algorithm description
-- Selecting and executing actions for the robot (or phantom robot) to take
-   - In order to ensure that a valid action is selected (value != -1), an action array is created with all valid actions for the current state (those actions which != -1). This occurs in the *for loops* within def run(self). A weighted random choice is then made from this generated array using the *choices* function. This selected action is then used to find the next state of the system (selecting *from action_matrix*). This chosen action is then published using *RobotMoveObjectToTag*.
-- Updating the Q-matrix
-   - The q-learning algorithm listens for the reward publisher which determines the reward amount based on the published action. If the reward is positive (100), the q_matrix is then updated using the q-learning algorithm (reward value + discount factor (0.8) * np.max). If this newly calculated value differs from the current value, the q_matrix csv file is resaved.  
-- Determining when to stop iterating through the Q-learning algorithm
-   - The Q-learning algorithm can stop iterating once the q_matrix converges. Convergence occurs when the values of the matrix cease to change (the optimal path has been identified and optimized for). If the convergence_count variable reaches 25 or greater, this means that the q-learning algorithm has gone through 25 iterations without any changes to the CSV file. This likely means that the q-matrix has converged and the optimal path has been identified.
-- Executing the path most likely to lead to receiving a reward after the Q-matrix has converged on the simulated Turtlebot3 robot
-   - This has yet to be done for this section of the project.
-### Robot perception description
-- Identifying the locations and identities of each of the colored objects
-    - The colors of each of the tubes (green, pink, and blue) were identified using a narrow range of RGB values. To control for other possible objects with similar colors that the camera might pick up, we exclude those pixels in the bottom half of the image. The robot orients itself with the colored tubes directly in front of it by moving aligning itself to place the colored tube in the center pixel of the image.
-- Identifying the locations and identities of each of the AR tags
-    - The AR tags are identified using the ArUco library implemented through the *aruco* module in OpenCV. The dictionary *DICT_4X4_50* is used for this specific implementation. This library automatically identifies the corners of the tags and the IDs of them. Similar to identifying the locations of the colored tubes, the robot aligns itself so that the target AR tag is placed in the center pixel of the image. 
-### Robot manipulation and movement
-- Moving to the right spot in order to pick up a colored object
-- Picking up the colored object
-- Moving to the desired destination (AR tag) with the colored object
-- Putting the colored object back down at the desired destination
-### Challenges
-- *One paragraph*
-### Future work
-- *One paragraph*
-### Takeaways
-- *First bulletpoint*
-- *Second bulletpoint*
