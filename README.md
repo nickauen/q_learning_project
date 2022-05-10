@@ -33,11 +33,11 @@ In order for the robot to learn which colored object belongs in front of which A
 - Putting the colored object back down at the desired destination
    - Once a distance of 0.25 or less is reached, *execute_drop()* is executed. Similar to *execute_grab()*, *execute_drop()* moves the arm forward (gripper closed), opens the gripper, and lifts the arm again. The movements happen synchronously and  with *time.sleep()* calls in between each step in order to give the robot enough time to compelte the movement. The parameters of the joints and grippers were tweaked through experimentation. The arm movement is stopped and the state is then set to 'done.'
 ### Challenges
-- *One paragraph*
+- We struggled with having the robot identify the color green consistently and without noise from other sources in the image. This caused us to slice the image and only look at the top 50% of pixels (in an effort to cut out noise from the floor or low objects). We didn't have much issue with Blue or Pink. We also struggled with lag on the connection between the turtlebot and our VMs. This would cause the turtlebot to be unable to recognize colors in its camera because the feed was updating so slowly - this would often result in the robot spinning in circles indefinitely, trying to find an object it cannot react fast enough to see.
 ### Future work
-- *One paragraph*
+- Imrovements could definitely be made to the smoothness of the arm movements and the precision with which it moves, all of which would just take extra time to fine tune. Additionally, developing a more consistent method for approximating distance in from the front of the robot (instead of the front 10 degrees) would be help, as our distance ratings would often become overinflated as the robot got closer to the target colored tubes.
 ### Takeaways
-- *First bulletpoint*
+- Test visual recognition algorithms in the lighting you plan to run the test in (unless you're aiming to create a particuarly robust recognition algorithm). The lighting between the classroom and space outside causes large variances in the pixel colors of the objects.
 - *Second bulletpoint*
 
 ## Implementation Plan
