@@ -2,6 +2,8 @@
 
 **Team Members**: Nick Auen, Rory Butler
 
+https://user-images.githubusercontent.com/34782324/167813015-a547857b-cf5f-4df9-8885-93a397cbe6e5.mp4
+
 ## Writeup
 ### Objectives description
 The goal of this project is to use a q-learning algorithm to enable our robot to learn how to organize three objects in front of three AR tags using reinforcement learning. Additionally, this project aims to use the robot's vision to recognize the differently colored objects and utilize the robot's "arm" to interact with these three objects and place them in the proper locations (in front of the right AR tags) after the q-learning phase.
