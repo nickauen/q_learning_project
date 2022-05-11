@@ -69,6 +69,8 @@ class QLearning(object):
         # Use:  new_state = self.possible_actions[state][action]
         self.possible_actions = [{int(act): new_state for new_state, act in enumerate(state)} for state in self.action_matrix]
 
+        self.win_state = None
+
     def run(self):
         # Give publisher time to set up
         time.sleep(1)
@@ -112,10 +114,13 @@ class QLearning(object):
                 #         np.max(self.q_matrix[new_state])
                 if self.reward_value == 100:
                     self.q_matrix[new_state] = 100
+                    self.win_state = new_state
 
                 # Update q_matrix with reward and state
                 old_value = self.q_matrix[current_state][action]
                 new_value = self.reward_value + self.discount_factor * np.max(self.q_matrix[new_state])
+                # Since the state transition graph has no loops, this trick can help converge quicker
+                new_value = max(old_value, new_value)
                 self.q_matrix[current_state][action] = new_value
 
                 # Save the new q matrix
@@ -123,7 +128,6 @@ class QLearning(object):
                     print('----------------')
                     print(np.round(self.q_matrix, 0))
                     convergence_count = 0
-                    self.save_q_matrix()
 
                 current_state = new_state
 
@@ -132,6 +136,7 @@ class QLearning(object):
             if convergence_count > 25:
                 # If it can play 25 games without a single change
                 # to the matrix, it's probably done
+                self.save_q_matrix()
                 break
 
     def reward(self, data):
@@ -139,6 +144,11 @@ class QLearning(object):
         self.got_reward = True
 
     def save_q_matrix(self):
+        # 100's were added to the 'win_state' to make line 120 easier
+        # But we can remove them now
+        if self.win_state is not None:
+            self.q_matrix[self.win_state] = 0
+        # Save the matrix
         np.savetxt(self.matrix_fname, self.q_matrix, delimiter=',')
 
 if __name__ == "__main__":
