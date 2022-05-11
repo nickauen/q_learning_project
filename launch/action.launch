@@ -1,1 +1,7 @@
-<!-- TODO -->
+<launch>
+    <include file="$(find turtlebot3_manipulation_bringup)/launch/turtlebot3_manipulation_bringup.launch"/>
+    <include file="$(find turtlebot3_manipulation_moveit_config)/launch/move_group.launch"/>
+    <node name="compressed" pkg="image_transport" type="republish" args="in:=raspicam_node/image raw out:=camera/rgb/image_raw"/>
+    <node name="pipeline" pkg="q_learning_project" type="pipeline.py" />
+    <node name="q_learning" pkg="q_learning_project" type="q2.py" />
+</launch>
